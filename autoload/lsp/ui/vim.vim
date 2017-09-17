@@ -72,7 +72,6 @@ function! lsp#ui#vim#balloon() abort
             \ })
     endfor
 
-    echom 'Retrieving hover ...'
     return ''
 endfunction
 
@@ -345,7 +344,7 @@ function! s:handle_hover(server, last_req_id, type, data) abort
     endif
 
     if a:type == 'balloon'
-        call balloon_show(join(map(l:contents, 'v:val.text'), "\n"))
+        call balloon_show(join(map(l:contents, 'v:val["text"]'), "\n"))
         return
     endif
 
