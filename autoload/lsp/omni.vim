@@ -413,7 +413,7 @@ function! lsp#omni#get_managed_user_data_from_completed_item(completed_item) abo
 endfunction
 
 function! lsp#omni#get_completion_item_kinds() abort
-    return map(keys(s:default_completion_item_kinds), {idx, key -> str2nr(key)})
+    return map(sort(keys(s:default_completion_item_kinds)), {idx, key -> str2nr(key)})
 endfunction
 
 function! s:create_user_data_key(base) abort
