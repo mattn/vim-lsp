@@ -65,7 +65,8 @@ function! lsp#internal#document_hover#under_cursor#do(options) abort
         \ lsp#callbag#flatMap({server->
         \   lsp#request(server, l:request)
         \ }),
-        \ lsp#callbag#tap({x->s:show_hover(l:ui, x['server_name'], x['request'], x['response'])}),
+        \ lsp#callbag#reduce({acc, curr -> add(acc, curr)}, []),
+        \ lsp#callbag#tap({xx->s:show_hovers(l:ui, xx)}),
         \ lsp#callbag#takeUntil(lsp#callbag#pipe(
         \   lsp#stream(),
         \   lsp#callbag#filter({x->has_key(x, 'command')}),
@@ -74,24 +75,34 @@ function! lsp#internal#document_hover#under_cursor#do(options) abort
         \ )
 endfunction
 
-function! s:show_hover(ui, server_name, request, response) abort
-    if !has_key(a:response, 'result') || empty(a:response['result']) || 
-        \ empty(a:response['result']['contents'])
-        call lsp#utils#error('No hover information found in server - ' . a:server_name)
-        return
-    endif
-
+function! s:show_hovers(ui, hovers) abort
     echo ''
-
     if s:FloatingWindow.is_available() && a:ui ==? 'float'
-        call s:show_floating_window(a:server_name, a:request, a:response)
+        call s:show_floating_window(a:hovers)
     else
-        call s:show_preview_window(a:server_name, a:request, a:response)
+        call s:show_preview_window(a:hovers)
     endif
 endfunction
 
-function! s:show_preview_window(server_name, request, response) abort
-    let l:contents = s:get_contents(a:response['result']['contents'])
+function! s:get_hover_contents(hovers) abort
+    let l:contents = []
+    for l:hover in a:hovers
+        if !has_key(l:hover, 'response') || !has_key(l:hover['response'], 'result')
+            continue
+        endif
+        if type(l:hover['response']['result']) !=# type({}) || !has_key(l:hover['response']['result'], 'contents')
+            continue
+        endif
+        if !empty(l:contents)
+            let l:contents += ['', '---', '']
+        endif
+        let l:contents += s:get_contents(l:hover['response']['result']['contents'])
+    endfor
+    return l:contents
+endfunction
+
+function! s:show_preview_window(hovers) abort
+    let l:contents = s:get_hover_contents(a:hovers)
 
     " Ignore if contents is empty.
     if empty(l:contents)
@@ -119,10 +130,10 @@ function! s:show_preview_window(server_name, request, response) abort
     let @#=l:alternate
 endfunction
 
-function! s:show_floating_window(server_name, request, response) abort
+function! s:show_floating_window(hovers) abort
     call s:close_floating_window()
 
-    let l:contents = s:get_contents(a:response['result']['contents'])
+    let l:contents = s:get_hover_contents(a:hovers)
 
     " Ignore if contents is empty.
     if empty(l:contents)
